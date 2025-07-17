@@ -1,13 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import Business, BusinessGame, Game, GamePlay
-import random
-import json
-
-# core/views.py
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from datetime import timedelta
 import random
 import json
 
@@ -36,6 +30,19 @@ def play_game(request):
         # IP adresi kontrolü
         if not is_ip_allowed(ip_address, business.network_ip_range):
             return JsonResponse({"error": "Bu IP adresi işletmenin ağına ait değil."}, status=403)
+
+        # Günlük oyun hakkı kontrolü
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+
+        play_count_today = GamePlay.objects.filter(
+            ip_address=ip_address,
+            business=business,
+            timestamp__range=(today_start, today_end)
+        ).count()
+
+        if play_count_today >= business.daily_game_limit_per_ip:
+            return JsonResponse({'error': 'Bu IP adresi bugün maksimum oyun hakkını kullanmıştır.'}, status=403)
 
         # Game ve BusinessGame kontrolü
         try:

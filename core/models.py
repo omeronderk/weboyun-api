@@ -5,6 +5,7 @@ class Business(models.Model):
     name = models.CharField(max_length=100)
     unique_code = models.CharField(max_length=100, unique=True, null=True, blank=True)
     network_ip_range = models.CharField(max_length=50, null=True, blank=True)
+    daily_game_limit_per_ip = models.PositiveIntegerField(default=3)
 
     def __str__(self):
         return self.name
