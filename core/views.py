@@ -4,7 +4,9 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 import json
-
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+from django.views import View
 from .models import Business, Game, BusinessGame, GamePlay, Reward
 
 @csrf_exempt
@@ -108,3 +110,28 @@ def business_games(request, business_code):
         return JsonResponse(data, safe=False)
     except Business.DoesNotExist:
         return JsonResponse({"error": "Business not found"}, status=404)
+@method_decorator(login_required, name='dispatch')
+class GamePlayListView(View):
+    def get(self, request):
+        try:
+            user = request.user
+
+            # Süper kullanıcıysa tüm verileri görebilir
+            if user.is_superuser:
+                gameplays = GamePlay.objects.all()
+            else:
+                # Kullanıcının bağlı olduğu işletmeyi al
+                business = Business.objects.get(user=user)
+                gameplays = GamePlay.objects.filter(business=business)
+
+            data = [{
+                'game': gp.game.name,
+                'ip_address': gp.ip_address,
+                'result': 'Kazandı' if gp.result else 'Kaybetti',
+                'timestamp': gp.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            } for gp in gameplays]
+
+            return JsonResponse(data, safe=False)
+
+        except Business.DoesNotExist:
+            return JsonResponse({'error': 'Bu kullanıcıya bağlı bir işletme bulunamadı.'}, status=404)
