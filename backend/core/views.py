@@ -110,28 +110,17 @@ def business_games(request, business_code):
         return JsonResponse(data, safe=False)
     except Business.DoesNotExist:
         return JsonResponse({"error": "Business not found"}, status=404)
-@method_decorator(login_required, name='dispatch')
+@method_decorator(csrf_exempt, name='dispatch')
 class GamePlayListView(View):
     def get(self, request):
-        try:
-            user = request.user
-
-            # Süper kullanıcıysa tüm verileri görebilir
-            if user.is_superuser:
-                gameplays = GamePlay.objects.all()
-            else:
-                # Kullanıcının bağlı olduğu işletmeyi al
-                business = Business.objects.get(user=user)
-                gameplays = GamePlay.objects.filter(business=business)
-
-            data = [{
-                'game': gp.game.name,
-                'ip_address': gp.ip_address,
-                'result': 'Kazandı' if gp.result else 'Kaybetti',
-                'timestamp': gp.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-            } for gp in gameplays]
-
-            return JsonResponse(data, safe=False)
-
-        except Business.DoesNotExist:
-            return JsonResponse({'error': 'Bu kullanıcıya bağlı bir işletme bulunamadı.'}, status=404)
+        gameplays = GamePlay.objects.all().order_by('-timestamp')[:10]
+        data = [
+            {
+                'game': gameplay.game.name,
+                'ip_address': gameplay.ip_address,
+                'result': 'Kazandı' if gameplay.result else 'Kaybetti',
+                'timestamp': gameplay.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+            for gameplay in gameplays
+        ]
+        return JsonResponse(data, safe=False)
